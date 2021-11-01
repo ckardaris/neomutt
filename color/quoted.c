@@ -124,33 +124,47 @@ bool quoted_colors_parse_color(enum ColorId color, uint32_t fg, uint32_t bg,
 }
 
 /**
- * qclass_free_tree - Free a quote list
+ * qclass_free - Free a single QClass
+ * @param ptr QClass to free
+ */
+static void qclass_free(struct QClass **ptr)
+{
+  if (!ptr || !*ptr)
+    return;
+
+  struct QClass *qc = *ptr;
+
+  FREE(&qc->prefix);
+  FREE(ptr);
+}
+
+/**
+ * qclass_free_tree - Free a tree of QClass
  * @param[out] quote_list Quote list to free
  */
 void qclass_free_tree(struct QClass **quote_list)
 {
-  struct QClass *ptr = NULL;
+  struct QClass *next = NULL;
 
   while (*quote_list)
   {
     if ((*quote_list)->down)
       qclass_free_tree(&((*quote_list)->down));
-    ptr = (*quote_list)->next;
-    FREE(&(*quote_list)->prefix);
-    FREE(quote_list);
-    *quote_list = ptr;
+    next = (*quote_list)->next;
+    qclass_free(quote_list);
+    *quote_list = next;
   }
 }
 
 /**
- * class_color_new - Create a new quoting colour
- * @param[in]     qc      Class of quoted text
- * @param[in,out] q_level Quote level
+ * qclass_new - Create a new QClass
+ * @retval ptr New QClass
  */
-static void class_color_new(struct QClass *qc, int *q_level)
+static struct QClass *qclass_new(void)
 {
-  qc->quote_n = (*q_level)++;
-  qc->color = quoted_colors_get(qc->quote_n);
+  struct QClass *qc = mutt_mem_calloc(1, sizeof(struct QClass));
+
+  return qc;
 }
 
 /**
@@ -219,7 +233,7 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
 
     if (!*quote_list)
     {
-      qc = mutt_mem_calloc(1, sizeof(struct QClass));
+      qc = qclass_new();
       qc->color = quoted_colors_get(0);
       *quote_list = qc;
     }
@@ -242,9 +256,8 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
         if (!tmp)
         {
           /* add a node above q_list */
-          tmp = mutt_mem_calloc(1, sizeof(struct QClass));
-          tmp->prefix = mutt_mem_calloc(1, length + 1);
-          strncpy(tmp->prefix, qptr, length);
+          tmp = qclass_new();
+          tmp->prefix = mutt_strn_dup(qptr, length);
           tmp->prefix_len = length;
 
           /* replace q_list by tmp in the top level list */
@@ -351,9 +364,8 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
               if (!tmp)
               {
                 /* add a node above q_list */
-                tmp = mutt_mem_calloc(1, sizeof(struct QClass));
-                tmp->prefix = mutt_mem_calloc(1, length + 1);
-                strncpy(tmp->prefix, qptr, length);
+                tmp = qclass_new();
+                tmp->prefix = mutt_strn_dup(qptr, length);
                 tmp->prefix_len = length;
 
                 /* replace q_list by tmp */
@@ -453,9 +465,8 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
         /* still not found so far: add it as a sibling to the current node */
         if (!qc)
         {
-          tmp = mutt_mem_calloc(1, sizeof(struct QClass));
-          tmp->prefix = mutt_mem_calloc(1, length + 1);
-          strncpy(tmp->prefix, qptr, length);
+          tmp = qclass_new();
+          tmp->prefix = mutt_strn_dup(qptr, length);
           tmp->prefix_len = length;
 
           if (ptr->down)
@@ -466,7 +477,8 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
           ptr->down = tmp;
           tmp->up = ptr;
 
-          class_color_new(tmp, q_level);
+          tmp->quote_n = (*q_level)++;
+          tmp->color = quoted_colors_get(tmp->quote_n);
 
           return tmp;
         }
@@ -490,11 +502,11 @@ struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
   if (!qc)
   {
     /* not found so far: add it as a top level class */
-    qc = mutt_mem_calloc(1, sizeof(struct QClass));
-    qc->prefix = mutt_mem_calloc(1, length + 1);
-    strncpy(qc->prefix, qptr, length);
+    qc = qclass_new();
+    qc->prefix = mutt_strn_dup(qptr, length);
     qc->prefix_len = length;
-    class_color_new(qc, q_level);
+    qc->quote_n = (*q_level)++;
+    qc->color = quoted_colors_get(qc->quote_n);
 
     if (*quote_list)
     {
