@@ -307,7 +307,7 @@ static int check_protected_header_marker(const char *p)
  * @retval true Line is quoted
  *
  * Checks if line matches the `$quote_regex` and doesn't match `$smileys`.
- * This is used by the pager for calling classify_quote.
+ * This is used by the pager for calling qclass_classify.
  */
 int mutt_is_quote_line(char *line, regmatch_t *pmatch)
 {
@@ -457,7 +457,7 @@ static void resolve_types(struct MuttWindow *win, char *buf, char *raw, struct L
   {
     if (q_classify && (lines[line_num].quote == NULL))
     {
-      lines[line_num].quote = classify_quote(quote_list, buf + pmatch[0].rm_so,
+      lines[line_num].quote = qclass_classify(quote_list, buf + pmatch[0].rm_so,
                                              pmatch[0].rm_eo - pmatch[0].rm_so,
                                              force_redraw, q_level);
     }
@@ -1149,7 +1149,7 @@ int display_line(FILE *fp, LOFF_T *bytes_read, struct Line **lines,
     if (mutt_regex_capture(c_quote_regex, (char *) fmt, 1, pmatch))
     {
       curr_line->quote =
-          classify_quote(quote_list, (char *) fmt + pmatch[0].rm_so,
+          qclass_classify(quote_list, (char *) fmt + pmatch[0].rm_so,
                          pmatch[0].rm_eo - pmatch[0].rm_so, force_redraw, q_level);
     }
     else

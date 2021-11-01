@@ -58,8 +58,8 @@ void quoted_colors_init(void)
 
 /**
  * quoted_colors_get - Return the color of a quote, cycling through the used quotes
- * @param q Quote number
- * @retval num Color ID, e.g. MT_COLOR_QUOTED
+ * @param q Quote level
+ * @retval num Color ID, e.g. #MT_COLOR_QUOTED
  */
 int quoted_colors_get(int q)
 {
@@ -124,17 +124,17 @@ bool quoted_colors_parse_color(enum ColorId color, uint32_t fg, uint32_t bg,
 }
 
 /**
- * cleanup_quote - Free a quote list
+ * qclass_free_tree - Free a quote list
  * @param[out] quote_list Quote list to free
  */
-void cleanup_quote(struct QClass **quote_list)
+void qclass_free_tree(struct QClass **quote_list)
 {
   struct QClass *ptr = NULL;
 
   while (*quote_list)
   {
     if ((*quote_list)->down)
-      cleanup_quote(&((*quote_list)->down));
+      qclass_free_tree(&((*quote_list)->down));
     ptr = (*quote_list)->next;
     FREE(&(*quote_list)->prefix);
     FREE(quote_list);
@@ -154,14 +154,14 @@ static void class_color_new(struct QClass *qc, int *q_level)
 }
 
 /**
- * shift_class_colors - Insert a new quote colour class into a list
+ * qclass_insert - Insert a new quote colour class into a list
  * @param[in]     quote_list List of quote colours
  * @param[in]     new_class  New quote colour to inset
  * @param[in]     index      Index to insert at
  * @param[in,out] q_level    Quote level
  */
-static void shift_class_colors(struct QClass *quote_list,
-                               struct QClass *new_class, int index, int *q_level)
+static void qclass_insert(struct QClass *quote_list, struct QClass *new_class,
+                          int index, int *q_level)
 {
   struct QClass *q_list = quote_list;
   new_class->quote_n = -1;
@@ -196,7 +196,7 @@ static void shift_class_colors(struct QClass *quote_list,
 }
 
 /**
- * classify_quote - Find a style for a string
+ * qclass_classify - Find a style for a string
  * @param[out] quote_list   List of quote colours
  * @param[in]  qptr         String to classify
  * @param[in]  length       Length of string
@@ -204,8 +204,8 @@ static void shift_class_colors(struct QClass *quote_list,
  * @param[out] q_level      Quoting level
  * @retval ptr Quoting style
  */
-struct QClass *classify_quote(struct QClass **quote_list, const char *qptr,
-                              size_t length, bool *force_redraw, int *q_level)
+struct QClass *qclass_classify(struct QClass **quote_list, const char *qptr,
+                               size_t length, bool *force_redraw, int *q_level)
 {
   struct QClass *q_list = *quote_list;
   struct QClass *qc = NULL, *tmp = NULL, *ptr = NULL, *save = NULL;
@@ -473,7 +473,7 @@ struct QClass *classify_quote(struct QClass **quote_list, const char *qptr,
         else
         {
           if (index != -1)
-            shift_class_colors(*quote_list, tmp, index, q_level);
+            qclass_insert(*quote_list, tmp, index, q_level);
 
           return qc;
         }
@@ -505,8 +505,7 @@ struct QClass *classify_quote(struct QClass **quote_list, const char *qptr,
   }
 
   if (index != -1)
-    shift_class_colors(*quote_list, tmp, index, q_level);
+    qclass_insert(*quote_list, tmp, index, q_level);
 
   return qc;
 }
-

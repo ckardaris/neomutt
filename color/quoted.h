@@ -62,7 +62,7 @@ int                quoted_colors_num_used(void);
 
 bool               quoted_colors_parse_color(enum ColorId color, uint32_t fg, uint32_t bg, int attrs, int q_level, int *rc, struct Buffer *err);
 
-struct QClass *classify_quote(struct QClass **quote_list, const char *qptr, size_t length, bool *force_redraw, int *q_level);
-void           cleanup_quote(struct QClass **quote_list);
+struct QClass *qclass_classify (struct QClass **quote_list, const char *qptr, size_t length, bool *force_redraw, int *q_level);
+void           qclass_free_tree(struct QClass **quote_list);
 
 #endif /* MUTT_COLOR_QUOTED_H */
